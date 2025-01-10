@@ -1,6 +1,7 @@
 # Project specific
 tests/
 testfiles/
+test.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -96,3 +97,4 @@ ENV/
 
 # Rope project settings
 .ropeproject
+

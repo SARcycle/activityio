@@ -37,7 +37,7 @@ setup(
     install_requires=[
         'numpy>=1.11.1',
         'pandas>=0.18.1',
-        'pytz >= 2011k',
+        'pytz >= 2022.4',
     ],
     extras_require={
         'dev': ['xlrd>=1.0.0'],

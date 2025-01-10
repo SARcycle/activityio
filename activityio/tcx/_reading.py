@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import re
 
+import pandas as pd
 from pandas import to_datetime
 
 from activityio._types import ActivityData, special_columns
@@ -37,6 +38,7 @@ def titlecase_to_undercase(string):
 
 @drydoc.gen_records
 def gen_records(file_path):
+
     nodes = gen_nodes(file_path, ('Trackpoint',), with_root=True)
 
     root = next(nodes)
@@ -48,10 +50,48 @@ def gen_records(file_path):
         yield recursive_text_extract(trkpt)
 
 
+@drydoc.gen_records
+def gen_records_trk_crs(file_path):
+
+    trk_pts = []
+    crs_pts = []
+
+    nodes = gen_nodes(file_path, ('Trackpoint',), with_root=True)
+
+    root = next(nodes)
+    if sans_ns(root.tag) != 'TrainingCenterDatabase':
+        raise exceptions.InvalidFileError('tcx')
+
+    trackpoints = nodes
+    for trkpt in trackpoints:
+        trk_pts.append(recursive_text_extract(trkpt))
+
+    trk_pts = pd.DataFrame(trk_pts).rename(columns={'Time': 'time', 'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'AltitudeMeters': 'elev', 'DistanceMeters': 'dist'})
+
+    try:
+        nodes = gen_nodes(file_path, ('CoursePoint',), with_root=True)
+
+        root = next(nodes)
+        if sans_ns(root.tag) != 'TrainingCenterDatabase':
+            raise exceptions.InvalidFileError('tcx')
+
+        coursepoints = nodes
+        for crspt in coursepoints:
+            crs_pts.append(recursive_text_extract(crspt))
+
+        crs_pts = pd.DataFrame(crs_pts).rename(columns={'Name': 'name', 'Time': 'time', 'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'PointType': 'type', 'Notes': 'note'})
+    except:
+        pass
+
+
+
+    return trk_pts, crs_pts if crs_pts.shape[0]!=0 else None
+
+
 def read_and_format(file_path):
     data = ActivityData.from_records(gen_records(file_path))
     times = data.pop('Time')                    # should always be there
-    data = data.astype('float64', copy=False)   # try and make numeric
+    #data = data.astype(copy=False)   # try and make numeric
 
     # Prettier column names!
     data.columns = map(titlecase_to_undercase, data.columns)
