@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import re
+import dateutil
+from datetime import datetime as dt
 
 import pandas as pd
 from pandas import to_datetime
@@ -66,8 +68,6 @@ def gen_records_trk_crs(file_path):
     for trkpt in trackpoints:
         trk_pts.append(recursive_text_extract(trkpt))
 
-    trk_pts = pd.DataFrame(trk_pts).rename(columns={'Time': 'time', 'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'AltitudeMeters': 'elev', 'DistanceMeters': 'dist'})
-
     try:
         nodes = gen_nodes(file_path, ('CoursePoint',), with_root=True)
 
@@ -79,30 +79,43 @@ def gen_records_trk_crs(file_path):
         for crspt in coursepoints:
             crs_pts.append(recursive_text_extract(crspt))
 
-        crs_pts = pd.DataFrame(crs_pts).rename(columns={'Name': 'name', 'Time': 'time', 'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'PointType': 'type', 'Notes': 'note'})
     except:
         pass
 
-
-
-    return trk_pts, crs_pts if crs_pts.shape[0]!=0 else None
+    return trk_pts if len(trk_pts)!=0 else None, crs_pts if len(crs_pts)!=0 else None
 
 
 def read_and_format(file_path):
-    data = ActivityData.from_records(gen_records(file_path))
-    times = data.pop('Time')                    # should always be there
-    #data = data.astype(copy=False)   # try and make numeric
 
-    # Prettier column names!
-    data.columns = map(titlecase_to_undercase, data.columns)
+    def post_processing(data):
+        data = ActivityData.from_records(data)
+        times = data.pop('Time')  # should always be there
+        # data = data.astype(copy=False)   # try and make numeric
 
-    try:
-        timestamps = to_datetime(times, format=DATETIME_FMT, utc=True)
-    except ValueError:  # bad format, try with fractional seconds
-        timestamps = to_datetime(times, format=DATETIME_FMT_WITH_FRAC, utc=True)
+        # Prettier column names!
+        data.columns = map(titlecase_to_undercase, data.columns)
 
-    timeoffsets = timestamps - timestamps[0]
-    data._finish_up(column_spec=COLUMN_SPEC,
-                    start=timestamps[0], timeoffsets=timeoffsets)
+        # try:
+        #     timestamps = to_datetime(times, format=DATETIME_FMT, utc=True)
+        # except ValueError:  # bad format, try with fractional seconds
+        #     timestamps = to_datetime(times, format=DATETIME_FMT_WITH_FRAC, utc=True)
 
-    return data
+        timestamps = times.apply(lambda x: dt.timestamp(dateutil.parser.parse(x)))
+        timeoffsets = timestamps - timestamps[0]
+        data._finish_up(column_spec=COLUMN_SPEC,
+                        start=timestamps[0], timeoffsets=timeoffsets)
+        data['Time'] = timestamps.to_list()
+
+        return data
+
+    trk_pts, crs_pts = gen_records_trk_crs(file_path)
+
+    if trk_pts is not None:
+        trk_pts = post_processing(trk_pts)
+        trk_pts = pd.DataFrame(trk_pts).rename(columns={'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'AltitudeMeters': 'elev', 'DistanceMeters': 'dist', 'Time': 'time'})
+
+    if crs_pts is not None:
+        crs_pts = post_processing(crs_pts)
+        crs_pts = pd.DataFrame(crs_pts).rename(columns={'Name': 'name', 'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'PointType': 'type', 'Notes': 'note', 'Time': 'time'})
+
+    return trk_pts, crs_pts

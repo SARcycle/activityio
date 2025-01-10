@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import numpy as np
+import pandas as pd
 from pandas import Series, Timedelta, TimedeltaIndex
 
 from activityio import tools
@@ -82,7 +83,7 @@ class ActivityData(DataFrameSubclass):
 
         self.start = start
         if timeoffsets is not None:
-            self.index = TimedeltaIndex(timeoffsets, unit='s', name='time')
+            self.index = pd.TimedeltaIndex(pd.to_timedelta(timeoffsets, unit='s'), name='time')
 
         # No point hanging on to completely empty columns!
         self.dropna(axis=1, how='all', inplace=True)
