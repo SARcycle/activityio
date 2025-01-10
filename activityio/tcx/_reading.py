@@ -112,10 +112,8 @@ def read_and_format(file_path):
 
     if trk_pts is not None:
         trk_pts = post_processing(trk_pts)
-        trk_pts = pd.DataFrame(trk_pts).rename(columns={'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'AltitudeMeters': 'elev', 'DistanceMeters': 'dist', 'Time': 'time'})
 
     if crs_pts is not None:
         crs_pts = post_processing(crs_pts)
-        crs_pts = pd.DataFrame(crs_pts).rename(columns={'Name': 'name', 'LatitudeDegrees': 'lat', 'LongitudeDegrees': 'lon', 'PointType': 'type', 'Notes': 'note', 'Time': 'time'})
 
     return trk_pts, crs_pts
